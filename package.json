@@ -9,6 +9,11 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@fullcalendar/core": "^6.1.20",
+    "@fullcalendar/daygrid": "^6.1.20",
+    "@fullcalendar/interaction": "^6.1.20",
+    "@fullcalendar/timegrid": "^6.1.20",
+    "@fullcalendar/vue3": "^6.1.20",
     "axios": "^1.6.5",
     "pinia": "^2.1.7",
     "vue": "^3.4.15",
@@ -21,4 +26,3 @@
     "vue-tsc": "^1.8.27"
   }
 }
-
