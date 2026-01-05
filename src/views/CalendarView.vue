@@ -3,14 +3,40 @@
     <div class="calendar-view">
       <div class="page-header">
         <h2 class="page-title">日历事件</h2>
-        <button @click="handleShowCreateForm" class="btn-primary">
-          创建事件
-        </button>
+        <div class="header-actions">
+          <!-- 视图切换按钮 -->
+          <div class="view-toggle">
+            <button
+              :class="['toggle-btn', { active: viewMode === 'calendar' }]"
+              @click="viewMode = 'calendar'"
+            >
+              日历视图
+            </button>
+            <button
+              :class="['toggle-btn', { active: viewMode === 'list' }]"
+              @click="viewMode = 'list'"
+            >
+              列表视图
+            </button>
+          </div>
+          <button @click="handleShowCreateForm" class="btn-primary">
+            创建事件
+          </button>
+        </div>
       </div>
 
       <!-- FullCalendar 日历视图 -->
-      <div class="calendar-container">
+      <div v-if="viewMode === 'calendar'" class="calendar-container">
         <FullCalendar :options="calendarOptions" />
+      </div>
+
+      <!-- 列表视图 -->
+      <div v-else class="list-container">
+        <EventListView
+          :events="events"
+          @edit="handleEditEvent"
+          @delete="handleDeleteEvent"
+        />
       </div>
 
       <!-- 事件表单弹窗 -->
@@ -37,6 +63,8 @@ import * as eventApi from '@/api/events'
 import type { Event, EventCreate } from '@/types'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import EventFormModal from '@/components/calendar/EventFormModal.vue'
+import EventListView from '@/components/calendar/EventListView.vue'
+import { getUserColor } from '@/utils/colors'
 
 // FullCalendar imports
 import FullCalendar from '@fullcalendar/vue3'
@@ -53,25 +81,29 @@ const editingEvent = ref<Event | null>(null)
 const initialDate = ref<Date | null>(null)
 const initialEndDate = ref<Date | null>(null)
 const error = ref('')
+const viewMode = ref<'calendar' | 'list'>('calendar')
 
 // 将 API Event 转换为 FullCalendar EventInput
 const calendarEvents = computed<EventInput[]>(() => {
-  return events.value.map(e => ({
-    id: String(e.id),
-    title: e.title,
-    start: e.start_time,
-    end: e.end_time,
-    allDay: e.all_day,
-    backgroundColor: '#4CAF50',
-    borderColor: '#4CAF50',
-    extendedProps: {
-      description: e.description,
-      location: e.location,
-      created_by: e.created_by,
-      created_at: e.created_at,
-      updated_at: e.updated_at
+  return events.value.map(e => {
+    const color = getUserColor(e.created_by)
+    return {
+      id: String(e.id),
+      title: e.title,
+      start: e.start_time,
+      end: e.end_time,
+      allDay: e.all_day,
+      backgroundColor: color,
+      borderColor: color,
+      extendedProps: {
+        description: e.description,
+        location: e.location,
+        created_by: e.created_by,
+        created_at: e.created_at,
+        updated_at: e.updated_at
+      }
     }
-  }))
+  })
 })
 
 // FullCalendar 配置
@@ -255,6 +287,28 @@ const handleSubmitEvent = async (formData: EventCreate & { id?: number }) => {
     setTimeout(() => error.value = '', 3000)
   }
 }
+
+// 编辑事件（从列表视图调用）
+const handleEditEvent = (event: Event) => {
+  editingEvent.value = event
+  initialDate.value = null
+  initialEndDate.value = null
+  showEventForm.value = true
+}
+
+// 删除事件（从列表视图调用）
+const handleDeleteEvent = async (eventId: number) => {
+  if (!groupStore.currentGroupId) return
+  if (!confirm('确定要删除这个事件吗？')) return
+
+  try {
+    await eventApi.deleteEvent(groupStore.currentGroupId, eventId)
+    await loadEvents()
+  } catch (err: any) {
+    error.value = err.message || '删除事件失败'
+    setTimeout(() => error.value = '', 3000)
+  }
+}
 </script>
 
 <style scoped>
@@ -278,6 +332,40 @@ const handleSubmitEvent = async (formData: EventCreate & { id?: number }) => {
   color: #333;
 }
 
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.view-toggle {
+  display: flex;
+  background-color: #f5f5f5;
+  border-radius: 4px;
+  padding: 2px;
+}
+
+.toggle-btn {
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #666;
+  background-color: transparent;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.toggle-btn:hover {
+  color: #333;
+}
+
+.toggle-btn.active {
+  color: white;
+  background-color: #4CAF50;
+}
+
 .btn-primary {
   padding: 10px 20px;
   font-size: 14px;
@@ -294,7 +382,8 @@ const handleSubmitEvent = async (formData: EventCreate & { id?: number }) => {
   background-color: #45a049;
 }
 
-.calendar-container {
+.calendar-container,
+.list-container {
   background-color: white;
   border-radius: 8px;
   padding: 20px;
@@ -399,3 +488,4 @@ const handleSubmitEvent = async (formData: EventCreate & { id?: number }) => {
   z-index: 1001;
 }
 </style>
+
