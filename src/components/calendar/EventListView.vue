@@ -36,6 +36,7 @@
         <div class="col-title">标题</div>
         <div class="col-time">时间</div>
         <div class="col-location">地点</div>
+        <div class="col-labels">标签</div>
         <div class="col-actions">操作</div>
       </div>
 
@@ -69,6 +70,17 @@
           <span v-if="event.location">{{ event.location }}</span>
           <span v-else class="text-muted">-</span>
         </div>
+        <div class="col-labels">
+          <div v-if="event.labels && event.labels.length > 0" class="labels-container">
+            <LabelBadge
+              v-for="label in event.labels"
+              :key="label.id"
+              :label="label"
+              :small="true"
+            />
+          </div>
+          <span v-else class="text-muted">-</span>
+        </div>
         <div class="col-actions" @click.stop>
           <button
             @click="$emit('edit', event)"
@@ -94,6 +106,7 @@
 import { ref, computed } from 'vue'
 import type { Event } from '@/types'
 import { getUserColor } from '@/utils/colors'
+import LabelBadge from '@/components/common/LabelBadge.vue'
 
 interface Props {
   events: Event[]
@@ -225,7 +238,7 @@ const formatDateTime = (dateString: string) => {
 .table-header,
 .table-row {
   display: grid;
-  grid-template-columns: 20px 2fr 2fr 1fr 140px;
+  grid-template-columns: 20px 2fr 2fr 1fr 1fr 140px;
   gap: 16px;
   align-items: center;
   padding: 12px 16px;
@@ -303,6 +316,12 @@ const formatDateTime = (dateString: string) => {
   color: #999;
 }
 
+.labels-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
 .col-actions {
   display: flex;
   gap: 8px;
@@ -350,6 +369,7 @@ const formatDateTime = (dateString: string) => {
 
   .col-time,
   .col-location,
+  .col-labels,
   .col-actions {
     display: none;
   }

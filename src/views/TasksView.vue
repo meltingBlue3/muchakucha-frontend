@@ -10,6 +10,7 @@
 
       <!-- 筛选器 -->
       <div class="filters">
+        <LabelFilter v-model="filterLabelIds" @update:modelValue="loadTasks" />
         <div class="filter-group">
           <label>状态：</label>
           <select v-model="filterStatus" @change="loadTasks" class="filter-select">
@@ -45,6 +46,14 @@
               <span class="priority-badge" :class="task.priority">
                 {{ getPriorityLabel(task.priority) }}
               </span>
+              <div v-if="task.labels && task.labels.length > 0" class="task-labels">
+                <LabelBadge
+                  v-for="label in task.labels"
+                  :key="label.id"
+                  :label="label"
+                  :small="true"
+                />
+              </div>
             </div>
             <div class="task-actions">
               <button @click="handleShowEditForm(task)" class="btn-icon">编辑</button>
@@ -154,6 +163,11 @@
               />
             </div>
 
+            <div class="form-group">
+              <label>标签</label>
+              <LabelInput v-model="taskFormData.label_ids" />
+            </div>
+
             <div class="form-actions">
               <button type="button" @click="handleCloseForm" class="btn-secondary">
                 取消
@@ -179,6 +193,9 @@ import { useGroupStore } from '@/stores/group'
 import * as taskApi from '@/api/tasks'
 import type { Task, TaskCreate } from '@/types'
 import AppLayout from '@/components/layout/AppLayout.vue'
+import LabelInput from '@/components/common/LabelInput.vue'
+import LabelBadge from '@/components/common/LabelBadge.vue'
+import LabelFilter from '@/components/common/LabelFilter.vue'
 
 const groupStore = useGroupStore()
 
@@ -190,11 +207,13 @@ const taskFormData = ref<TaskCreate>({
   description: '',
   status: 'pending',
   priority: 'medium',
-  due_date: ''
+  due_date: '',
+  label_ids: []
 })
 
 const filterStatus = ref('')
 const filterPriority = ref('')
+const filterLabelIds = ref<number[]>([])
 const loading = ref(false)
 const submitting = ref(false)
 const error = ref('')
@@ -211,7 +230,8 @@ const loadTasks = async () => {
     tasks.value = await taskApi.getTasks(
       groupStore.currentGroupId,
       filterStatus.value || undefined,
-      filterPriority.value || undefined
+      filterPriority.value || undefined,
+      filterLabelIds.value.length > 0 ? filterLabelIds.value : undefined
     )
   } catch (err: any) {
     error.value = err.message || '加载任务列表失败'
@@ -228,7 +248,8 @@ const handleShowCreateForm = () => {
     description: '',
     status: 'pending',
     priority: 'medium',
-    due_date: ''
+    due_date: '',
+    label_ids: []
   }
   showTaskForm.value = true
 }
@@ -240,7 +261,8 @@ const handleShowEditForm = (task: Task) => {
     description: task.description || '',
     status: task.status,
     priority: task.priority,
-    due_date: task.due_date || ''
+    due_date: task.due_date || '',
+    label_ids: task.labels.map(label => label.id)
   }
   showTaskForm.value = true
 }
@@ -262,7 +284,8 @@ const handleSubmitTask = async () => {
       description: taskFormData.value.description || null,
       status: taskFormData.value.status,
       priority: taskFormData.value.priority,
-      due_date: taskFormData.value.due_date || null
+      due_date: taskFormData.value.due_date || null,
+      label_ids: taskFormData.value.label_ids
     }
 
     if (editingTask.value) {
@@ -411,6 +434,13 @@ const formatDate = (dateString: string) => {
   align-items: center;
   gap: 12px;
   flex: 1;
+  flex-wrap: wrap;
+}
+
+.task-labels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
 }
 
 .task-title {

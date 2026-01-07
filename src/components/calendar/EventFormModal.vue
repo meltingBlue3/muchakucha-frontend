@@ -70,6 +70,11 @@
           </label>
         </div>
 
+        <div class="form-group">
+          <label>标签</label>
+          <LabelInput v-model="formData.label_ids" />
+        </div>
+
         <div class="form-actions">
           <button type="button" @click="handleClose" class="btn-secondary">
             取消
@@ -86,6 +91,7 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import type { Event, EventCreate } from '@/types'
+import LabelInput from '@/components/common/LabelInput.vue'
 
 interface Props {
   modelValue: boolean
@@ -114,7 +120,8 @@ const formData = ref<EventCreate & { id?: number }>({
   start_time: '',
   end_time: '',
   location: '',
-  all_day: false
+  all_day: false,
+  label_ids: []
 })
 
 // 监听 props 变化，初始化表单数据
@@ -131,7 +138,8 @@ watch(
           start_time: formatDateTimeForInput(props.event.start_time),
           end_time: formatDateTimeForInput(props.event.end_time),
           location: props.event.location || '',
-          all_day: props.event.all_day
+          all_day: props.event.all_day,
+          label_ids: props.event.labels.map(label => label.id)
         }
       } else {
         // 创建模式：重置表单，可能包含初始日期
@@ -148,7 +156,8 @@ watch(
           start_time: formatDateTimeForInput(startTime.toISOString()),
           end_time: formatDateTimeForInput(endTime.toISOString()),
           location: '',
-          all_day: false
+          all_day: false,
+          label_ids: []
         }
       }
     }

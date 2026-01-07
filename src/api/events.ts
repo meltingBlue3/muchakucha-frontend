@@ -16,16 +16,18 @@ export const createEvent = async (
 }
 
 /**
- * 获取事件列表（支持日期范围过滤）
+ * 获取事件列表（支持日期范围和标签过滤）
  */
 export const getEvents = async (
   groupId: number,
   startDate?: string,
-  endDate?: string
+  endDate?: string,
+  labelIds?: number[]
 ): Promise<Event[]> => {
   const params: Record<string, string> = {}
   if (startDate) params.start_date = startDate
   if (endDate) params.end_date = endDate
+  if (labelIds && labelIds.length > 0) params.label_ids = labelIds.join(',')
 
   const response = await client.get<Event[]>(`/api/groups/${groupId}/events`, {
     params

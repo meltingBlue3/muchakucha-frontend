@@ -16,16 +16,18 @@ export const createTask = async (
 }
 
 /**
- * 获取任务列表（支持状态/优先级过滤）
+ * 获取任务列表（支持状态/优先级/标签过滤）
  */
 export const getTasks = async (
   groupId: number,
   status?: string,
-  priority?: string
+  priority?: string,
+  labelIds?: number[]
 ): Promise<Task[]> => {
   const params: Record<string, string> = {}
   if (status) params.status = status
   if (priority) params.priority = priority
+  if (labelIds && labelIds.length > 0) params.label_ids = labelIds.join(',')
 
   const response = await client.get<Task[]>(`/api/groups/${groupId}/tasks`, {
     params

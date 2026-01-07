@@ -71,6 +71,37 @@ export interface GroupMemberDetail {
   user_nickname: string
 }
 
+// Label 相关类型
+export interface Label {
+  id: number
+  group_id: number
+  name: string
+  color: string
+  created_at: string
+  updated_at: string
+}
+
+export interface LabelBasic {
+  id: number
+  name: string
+  color: string
+}
+
+export interface LabelCreate {
+  name: string
+  color?: string
+}
+
+export interface LabelUpdate {
+  name?: string | null
+  color?: string | null
+}
+
+export interface LabelWithStats extends Label {
+  event_count: number
+  task_count: number
+}
+
 // Event 相关类型
 export interface Event {
   id: number
@@ -84,6 +115,7 @@ export interface Event {
   created_by: number
   created_at: string
   updated_at: string
+  labels: LabelBasic[]
 }
 
 export interface EventCreate {
@@ -93,6 +125,7 @@ export interface EventCreate {
   end_time: string
   all_day?: boolean
   location?: string | null
+  label_ids?: number[]
 }
 
 export interface EventUpdate {
@@ -102,6 +135,7 @@ export interface EventUpdate {
   end_time?: string | null
   all_day?: boolean | null
   location?: string | null
+  label_ids?: number[] | null
 }
 
 // Task 相关类型
@@ -117,6 +151,7 @@ export interface Task {
   created_by: number
   created_at: string
   updated_at: string
+  labels: LabelBasic[]
 }
 
 export interface TaskCreate {
@@ -126,6 +161,7 @@ export interface TaskCreate {
   status?: string
   priority?: string
   assigned_to?: number | null
+  label_ids?: number[]
 }
 
 export interface TaskUpdate {
@@ -135,6 +171,7 @@ export interface TaskUpdate {
   status?: string | null
   priority?: string | null
   assigned_to?: number | null
+  label_ids?: number[] | null
 }
 
 // Note 相关类型

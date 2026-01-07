@@ -4,6 +4,9 @@
       <div class="page-header">
         <h2 class="page-title">日历事件</h2>
         <div class="header-actions">
+          <!-- 标签筛选 -->
+          <LabelFilter v-model="filterLabelIds" @update:modelValue="loadEvents" />
+          
           <!-- 视图切换按钮 -->
           <div class="view-toggle">
             <button
@@ -64,6 +67,7 @@ import type { Event, EventCreate } from '@/types'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import EventFormModal from '@/components/calendar/EventFormModal.vue'
 import EventListView from '@/components/calendar/EventListView.vue'
+import LabelFilter from '@/components/common/LabelFilter.vue'
 import { getUserColor } from '@/utils/colors'
 import { formatLocalTimeToISO } from '@/utils/datetime'
 
@@ -83,6 +87,7 @@ const initialDate = ref<Date | null>(null)
 const initialEndDate = ref<Date | null>(null)
 const error = ref('')
 const viewMode = ref<'calendar' | 'list'>('calendar')
+const filterLabelIds = ref<number[]>([])
 
 // 将 API Event 转换为 FullCalendar EventInput
 const calendarEvents = computed<EventInput[]>(() => {
@@ -159,7 +164,12 @@ const loadEvents = async () => {
   if (!groupStore.currentGroupId) return
 
   try {
-    events.value = await eventApi.getEvents(groupStore.currentGroupId)
+    events.value = await eventApi.getEvents(
+      groupStore.currentGroupId,
+      undefined,
+      undefined,
+      filterLabelIds.value.length > 0 ? filterLabelIds.value : undefined
+    )
   } catch (err: any) {
     error.value = err.message || '加载事件列表失败'
     setTimeout(() => error.value = '', 3000)
@@ -270,7 +280,8 @@ const handleSubmitEvent = async (formData: EventCreate & { id?: number }) => {
       start_time: formatLocalTimeToISO(formData.start_time),
       end_time: formatLocalTimeToISO(formData.end_time),
       location: formData.location || null,
-      all_day: formData.all_day
+      all_day: formData.all_day,
+      label_ids: formData.label_ids
     }
 
     if (formData.id) {
