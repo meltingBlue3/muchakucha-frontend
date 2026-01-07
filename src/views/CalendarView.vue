@@ -65,6 +65,7 @@ import AppLayout from '@/components/layout/AppLayout.vue'
 import EventFormModal from '@/components/calendar/EventFormModal.vue'
 import EventListView from '@/components/calendar/EventListView.vue'
 import { getUserColor } from '@/utils/colors'
+import { formatLocalTimeToISO } from '@/utils/datetime'
 
 // FullCalendar imports
 import FullCalendar from '@fullcalendar/vue3'
@@ -215,8 +216,8 @@ const handleEventDrop = async (dropInfo: EventDropArg) => {
   
   try {
     await eventApi.updateEvent(groupStore.currentGroupId, eventId, {
-      start_time: newStart.toISOString(),
-      end_time: newEnd ? newEnd.toISOString() : undefined
+      start_time: formatLocalTimeToISO(newStart),
+      end_time: newEnd ? formatLocalTimeToISO(newEnd) : undefined
     })
     await loadEvents()
   } catch (err: any) {
@@ -240,7 +241,7 @@ const handleEventResize = async (resizeInfo: EventResizeDoneArg) => {
   
   try {
     await eventApi.updateEvent(groupStore.currentGroupId, eventId, {
-      end_time: newEnd.toISOString()
+      end_time: formatLocalTimeToISO(newEnd)
     })
     await loadEvents()
   } catch (err: any) {
@@ -266,8 +267,8 @@ const handleSubmitEvent = async (formData: EventCreate & { id?: number }) => {
     const data: EventCreate = {
       title: formData.title,
       description: formData.description || null,
-      start_time: new Date(formData.start_time).toISOString(),
-      end_time: new Date(formData.end_time).toISOString(),
+      start_time: formatLocalTimeToISO(formData.start_time),
+      end_time: formatLocalTimeToISO(formData.end_time),
       location: formData.location || null,
       all_day: formData.all_day
     }
