@@ -90,7 +90,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useGroupStore } from '@/stores/group'
 import * as noteApi from '@/api/notes'
 import type { Note, NoteCreate } from '@/types'
@@ -112,6 +112,14 @@ const error = ref('')
 
 onMounted(async () => {
   await loadNotes()
+})
+
+// 监听群组切换，自动刷新数据
+watch(() => groupStore.currentGroupId, async (newGroupId, oldGroupId) => {
+  // 只在群组真正改变时刷新（避免初始化时重复加载）
+  if (newGroupId && newGroupId !== oldGroupId) {
+    await loadNotes()
+  }
 })
 
 const loadNotes = async () => {

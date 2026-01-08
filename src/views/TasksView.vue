@@ -188,7 +188,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useGroupStore } from '@/stores/group'
 import * as taskApi from '@/api/tasks'
 import type { Task, TaskCreate } from '@/types'
@@ -220,6 +220,18 @@ const error = ref('')
 
 onMounted(async () => {
   await loadTasks()
+})
+
+// 监听群组切换，自动刷新数据
+watch(() => groupStore.currentGroupId, async (newGroupId, oldGroupId) => {
+  // 只在群组真正改变时刷新（避免初始化时重复加载）
+  if (newGroupId && newGroupId !== oldGroupId) {
+    // 重置筛选条件
+    filterStatus.value = ''
+    filterPriority.value = ''
+    filterLabelIds.value = []
+    await loadTasks()
+  }
 })
 
 const loadTasks = async () => {

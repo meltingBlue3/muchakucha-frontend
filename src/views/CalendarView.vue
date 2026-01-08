@@ -60,7 +60,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useGroupStore } from '@/stores/group'
 import * as eventApi from '@/api/events'
 import type { Event, EventCreate } from '@/types'
@@ -158,6 +158,14 @@ const calendarOptions = computed<CalendarOptions>(() => ({
 
 onMounted(async () => {
   await loadEvents()
+})
+
+// 监听群组切换，自动刷新数据
+watch(() => groupStore.currentGroupId, async (newGroupId, oldGroupId) => {
+  // 只在群组真正改变时刷新（避免初始化时重复加载）
+  if (newGroupId && newGroupId !== oldGroupId) {
+    await loadEvents()
+  }
 })
 
 const loadEvents = async () => {
