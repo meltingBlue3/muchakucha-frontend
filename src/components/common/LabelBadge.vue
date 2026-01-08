@@ -1,27 +1,22 @@
 <template>
-  <span
-    class="label-badge"
-    :style="{
-      backgroundColor: label.color,
-      color: getTextColor(label.color)
+  <n-tag
+    :color="{
+      color: label.color,
+      textColor: getTextColor(label.color)
     }"
-    :class="{ clickable, small }"
+    :size="small ? 'small' : 'medium'"
+    :closable="removable"
+    :round="true"
+    @close="$emit('remove')"
     @click="handleClick"
+    :style="{ cursor: clickable ? 'pointer' : 'default' }"
   >
     {{ label.name }}
-    <button
-      v-if="removable"
-      @click.stop="$emit('remove')"
-      class="remove-btn"
-      type="button"
-      :aria-label="`删除标签 ${label.name}`"
-    >
-      ×
-    </button>
-  </span>
+  </n-tag>
 </template>
 
 <script setup lang="ts">
+import { NTag } from 'naive-ui'
 import type { LabelBasic } from '@/types'
 
 interface Props {
@@ -67,55 +62,3 @@ const getTextColor = (bgColor: string): string => {
   return brightness > 128 ? '#000000' : '#FFFFFF'
 }
 </script>
-
-<style scoped>
-.label-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px 10px;
-  border-radius: 12px;
-  font-size: 13px;
-  font-weight: 500;
-  white-space: nowrap;
-  transition: all 0.2s;
-}
-
-.label-badge.small {
-  padding: 2px 8px;
-  font-size: 12px;
-}
-
-.label-badge.clickable {
-  cursor: pointer;
-}
-
-.label-badge.clickable:hover {
-  opacity: 0.85;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.remove-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 16px;
-  height: 16px;
-  padding: 0;
-  margin-left: 2px;
-  background-color: rgba(0, 0, 0, 0.15);
-  border: none;
-  border-radius: 50%;
-  font-size: 16px;
-  line-height: 1;
-  color: inherit;
-  cursor: pointer;
-  transition: background-color 0.2s;
-}
-
-.remove-btn:hover {
-  background-color: rgba(0, 0, 0, 0.3);
-}
-</style>
-

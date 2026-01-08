@@ -1,7 +1,7 @@
 <template>
   <div class="label-input-container">
     <!-- 已选择的标签 -->
-    <div v-if="selectedLabels.length > 0" class="selected-labels">
+    <n-space v-if="selectedLabels.length > 0" size="small">
       <LabelBadge
         v-for="label in selectedLabels"
         :key="label.id"
@@ -9,74 +9,45 @@
         :removable="true"
         @remove="handleRemoveLabel(label.id)"
       />
-    </div>
+    </n-space>
 
     <!-- 输入框 -->
-    <div class="input-wrapper">
-      <input
-        ref="inputRef"
-        v-model="inputValue"
-        type="text"
-        :placeholder="placeholder"
-        class="label-input"
-        @input="handleInput"
-        @keydown="handleKeydown"
-        @blur="handleBlur"
-      />
-      
-      <!-- 下拉提示框 -->
-      <Teleport to="body">
-        <div
-          v-if="showDropdown && dropdownPosition"
-          ref="dropdownRef"
-          class="label-dropdown"
-          :style="{
-            top: `${dropdownPosition.top}px`,
-            left: `${dropdownPosition.left}px`,
-            width: `${dropdownPosition.width}px`
-          }"
-        >
-          <div
-            v-for="(label, index) in filteredLabels"
-            :key="label.id"
-            class="dropdown-item"
-            :class="{ active: index === activeIndex }"
-            @mousedown.prevent="handleSelectLabel(label)"
-            @mouseenter="activeIndex = index"
-          >
-            <span
-              class="label-color-dot"
-              :style="{ backgroundColor: label.color }"
-            ></span>
-            {{ label.name }}
-          </div>
-
-          <!-- 创建新标签选项 -->
-          <div
-            v-if="searchQuery && !exactMatch"
-            class="dropdown-item create-new"
-            :class="{ active: activeIndex === filteredLabels.length }"
-            @mousedown.prevent="handleCreateLabel"
-            @mouseenter="activeIndex = filteredLabels.length"
-          >
-            <span class="create-icon">+</span>
-            创建标签 "{{ searchQuery }}"
-          </div>
-
-          <div v-if="filteredLabels.length === 0 && !searchQuery" class="dropdown-empty">
-            输入 # 开始添加标签
-          </div>
-        </div>
-      </Teleport>
-    </div>
+    <n-input
+      ref="inputRef"
+      v-model:value="inputValue"
+      :placeholder="placeholder"
+      @input="handleInput"
+      @keydown="handleKeydown"
+      @blur="handleBlur"
+    >
+      <template #suffix>
+        <n-text depth="3" style="font-size: 12px;">输入 # 添加标签</n-text>
+      </template>
+    </n-input>
+    
+    <!-- 下拉提示框 -->
+    <n-dropdown
+      :show="showDropdown"
+      :options="dropdownOptions"
+      :render-label="renderDropdownLabel"
+      @select="handleSelectFromDropdown"
+      placement="bottom-start"
+      trigger="manual"
+      :x="dropdownPosition?.left"
+      :y="dropdownPosition?.top"
+    >
+      <span></span>
+    </n-dropdown>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, nextTick, h } from 'vue'
 import { useGroupStore } from '@/stores/group'
 import * as labelApi from '@/api/labels'
 import type { Label, LabelBasic } from '@/types'
+import { NInput, NSpace, NDropdown, NText } from 'naive-ui'
+import type { DropdownOption } from 'naive-ui'
 import LabelBadge from './LabelBadge.vue'
 
 interface Props {
@@ -102,14 +73,12 @@ const LABEL_COLORS = [
 ]
 
 // 状态
-const inputRef = ref<HTMLInputElement | null>(null)
-const dropdownRef = ref<HTMLElement | null>(null)
+const inputRef = ref<InstanceType<typeof NInput> | null>(null)
 const inputValue = ref('')
 const showDropdown = ref(false)
 const allLabels = ref<Label[]>([])
 const searchQuery = ref('')
-const activeIndex = ref(0)
-const dropdownPosition = ref<{ top: number; left: number; width: number } | null>(null)
+const dropdownPosition = ref<{ top: number; left: number } | null>(null)
 
 // 已选择的标签
 const selectedLabels = computed<LabelBasic[]>(() => {
@@ -141,6 +110,54 @@ const exactMatch = computed(() => {
   return allLabels.value.some(label => label.name.toLowerCase() === query)
 })
 
+// 下拉选项
+const dropdownOptions = computed<DropdownOption[]>(() => {
+  const options: DropdownOption[] = filteredLabels.value.map(label => ({
+    label: label.name,
+    key: `label-${label.id}`,
+    props: {
+      labelData: label
+    }
+  }))
+
+  if (searchQuery.value && !exactMatch.value) {
+    options.push({
+      label: `创建标签 "${searchQuery.value}"`,
+      key: 'create-new',
+      props: {
+        isCreate: true
+      }
+    })
+  }
+
+  if (options.length === 0 && !searchQuery.value) {
+    return [{
+      label: '输入 # 开始添加标签',
+      key: 'empty',
+      disabled: true
+    }]
+  }
+
+  return options
+})
+
+// 渲染下拉选项标签
+const renderDropdownLabel = (option: DropdownOption) => {
+  if (option.props?.isCreate) {
+    return h('span', { style: 'color: #2080f0; font-weight: 500;' }, option.label as string)
+  }
+  if (option.props?.labelData) {
+    const label = option.props.labelData as Label
+    return h('div', { style: 'display: flex; align-items: center; gap: 8px;' }, [
+      h('span', { 
+        style: `width: 12px; height: 12px; border-radius: 50%; background-color: ${label.color};` 
+      }),
+      h('span', label.name)
+    ])
+  }
+  return option.label
+}
+
 // 加载标签列表
 const loadLabels = async () => {
   if (!groupStore.currentGroupId) return
@@ -161,7 +178,6 @@ const handleInput = () => {
     // 找到 # 符号，提取搜索内容
     searchQuery.value = value.substring(hashIndex + 1).trim()
     showDropdown.value = true
-    activeIndex.value = 0
     updateDropdownPosition()
   } else {
     showDropdown.value = false
@@ -171,32 +187,10 @@ const handleInput = () => {
 
 // 处理键盘事件
 const handleKeydown = (e: KeyboardEvent) => {
-  if (!showDropdown.value) return
-
-  const maxIndex = exactMatch.value ? filteredLabels.value.length : filteredLabels.value.length
-  
-  switch (e.key) {
-    case 'ArrowDown':
-      e.preventDefault()
-      activeIndex.value = (activeIndex.value + 1) % (maxIndex + 1)
-      break
-    case 'ArrowUp':
-      e.preventDefault()
-      activeIndex.value = activeIndex.value === 0 ? maxIndex : activeIndex.value - 1
-      break
-    case 'Enter':
-      e.preventDefault()
-      if (activeIndex.value < filteredLabels.value.length) {
-        handleSelectLabel(filteredLabels.value[activeIndex.value])
-      } else if (searchQuery.value && !exactMatch.value) {
-        handleCreateLabel()
-      }
-      break
-    case 'Escape':
-      e.preventDefault()
-      showDropdown.value = false
-      searchQuery.value = ''
-      break
+  if (e.key === 'Escape' && showDropdown.value) {
+    e.preventDefault()
+    showDropdown.value = false
+    searchQuery.value = ''
   }
 }
 
@@ -207,6 +201,15 @@ const handleBlur = () => {
     showDropdown.value = false
     searchQuery.value = ''
   }, 200)
+}
+
+// 从下拉框选择
+const handleSelectFromDropdown = (key: string, option: DropdownOption) => {
+  if (key === 'create-new') {
+    handleCreateLabel()
+  } else if (option.props?.labelData) {
+    handleSelectLabel(option.props.labelData as Label)
+  }
 }
 
 // 选择标签
@@ -256,13 +259,13 @@ const handleCreateLabel = async () => {
 
 // 更新下拉框位置
 const updateDropdownPosition = () => {
-  if (!inputRef.value) return
+  if (!inputRef.value || !inputRef.value.$el) return
   
-  const rect = inputRef.value.getBoundingClientRect()
+  const inputEl = inputRef.value.$el as HTMLElement
+  const rect = inputEl.getBoundingClientRect()
   dropdownPosition.value = {
     top: rect.bottom + window.scrollY + 4,
-    left: rect.left + window.scrollX,
-    width: rect.width
+    left: rect.left + window.scrollX
   }
 }
 
@@ -300,90 +303,4 @@ watch(showDropdown, (show) => {
   flex-direction: column;
   gap: 8px;
 }
-
-.selected-labels {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.input-wrapper {
-  position: relative;
-}
-
-.label-input {
-  width: 100%;
-  padding: 10px;
-  font-size: 14px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  outline: none;
-  transition: border-color 0.2s;
-}
-
-.label-input:focus {
-  border-color: #4CAF50;
-  box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.1);
-}
-
-.label-dropdown {
-  position: absolute;
-  z-index: 9999;
-  max-height: 300px;
-  overflow-y: auto;
-  background-color: white;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-}
-
-.dropdown-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 12px;
-  font-size: 14px;
-  color: #333;
-  cursor: pointer;
-  transition: background-color 0.2s;
-}
-
-.dropdown-item:hover,
-.dropdown-item.active {
-  background-color: #f5f5f5;
-}
-
-.dropdown-item.create-new {
-  color: #4CAF50;
-  font-weight: 500;
-  border-top: 1px solid #e0e0e0;
-}
-
-.label-color-dot {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-.create-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  background-color: #4CAF50;
-  color: white;
-  border-radius: 50%;
-  font-size: 16px;
-  line-height: 1;
-}
-
-.dropdown-empty {
-  padding: 20px;
-  text-align: center;
-  color: #999;
-  font-size: 13px;
-}
 </style>
-

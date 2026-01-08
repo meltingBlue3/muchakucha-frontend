@@ -1,9 +1,23 @@
 <template>
-  <router-view />
+  <n-config-provider :theme-overrides="themeOverrides">
+    <n-message-provider>
+      <n-dialog-provider>
+        <router-view />
+      </n-dialog-provider>
+    </n-message-provider>
+  </n-config-provider>
 </template>
 
 <script setup lang="ts">
-// 根组件，只负责渲染路由视图
+import { NConfigProvider, NMessageProvider, NDialogProvider } from 'naive-ui'
+import type { GlobalThemeOverrides } from 'naive-ui'
+
+// 主题配置（使用 Naive UI 默认蓝色主题）
+const themeOverrides: GlobalThemeOverrides = {
+  common: {
+    borderRadius: '4px'
+  }
+}
 </script>
 
 <style>
@@ -23,20 +37,19 @@ body {
 
 #app {
   min-height: 100vh;
-  background-color: #f5f5f5;
 }
 
 /* FullCalendar 全局样式定制 */
 :root {
-  --fc-button-bg-color: #4CAF50;
-  --fc-button-border-color: #4CAF50;
-  --fc-button-hover-bg-color: #45a049;
-  --fc-button-hover-border-color: #45a049;
-  --fc-button-active-bg-color: #388E3C;
-  --fc-button-active-border-color: #388E3C;
-  --fc-event-bg-color: #4CAF50;
-  --fc-event-border-color: #4CAF50;
-  --fc-today-bg-color: rgba(76, 175, 80, 0.1);
+  --fc-button-bg-color: #2080f0;
+  --fc-button-border-color: #2080f0;
+  --fc-button-hover-bg-color: #4098fc;
+  --fc-button-hover-border-color: #4098fc;
+  --fc-button-active-bg-color: #1060c9;
+  --fc-button-active-border-color: #1060c9;
+  --fc-event-bg-color: #2080f0;
+  --fc-event-border-color: #2080f0;
+  --fc-today-bg-color: rgba(32, 128, 240, 0.1);
 }
 
 /* FullCalendar 按钮样式优化 */
@@ -47,7 +60,7 @@ body {
 }
 
 .fc .fc-button:focus {
-  box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.3);
+  box-shadow: 0 0 0 2px rgba(32, 128, 240, 0.3);
 }
 
 /* FullCalendar 事件样式 */
@@ -78,7 +91,7 @@ body {
 }
 
 .fc a:hover {
-  color: #4CAF50;
+  color: #2080f0;
 }
 </style>
 

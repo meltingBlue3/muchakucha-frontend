@@ -1,51 +1,50 @@
 <template>
   <div class="auth-page">
-    <div class="auth-container">
+    <n-card class="auth-card" :bordered="false">
       <h1 class="auth-title">登录</h1>
       
-      <form @submit.prevent="handleSubmit" class="auth-form">
-        <div class="form-group">
-          <label for="email">邮箱</label>
-          <input
-            id="email"
-            v-model="formData.email"
-            type="email"
-            required
+      <n-form
+        ref="formRef"
+        :model="formData"
+        :rules="rules"
+        @submit.prevent="handleSubmit"
+        size="large"
+      >
+        <n-form-item path="email" label="邮箱">
+          <n-input
+            v-model:value="formData.email"
             placeholder="请输入邮箱"
-            class="form-input"
+            @keydown.enter="handleSubmit"
           />
-        </div>
+        </n-form-item>
 
-        <div class="form-group">
-          <label for="password">密码</label>
-          <input
-            id="password"
-            v-model="formData.password"
+        <n-form-item path="password" label="密码">
+          <n-input
+            v-model:value="formData.password"
             type="password"
-            required
+            show-password-on="click"
             placeholder="请输入密码"
-            class="form-input"
+            @keydown.enter="handleSubmit"
           />
-        </div>
+        </n-form-item>
 
-        <div v-if="error" class="error-message">
-          {{ error }}
-        </div>
-
-        <button 
-          type="submit" 
+        <n-button
+          type="primary"
+          block
+          :loading="loading"
           :disabled="loading"
-          class="btn-submit"
+          @click="handleSubmit"
+          style="margin-top: 8px;"
         >
           {{ loading ? '登录中...' : '登录' }}
-        </button>
-      </form>
+        </n-button>
+      </n-form>
 
       <div class="auth-footer">
-        <span>还没有账号？</span>
+        <n-text depth="3">还没有账号？</n-text>
         <router-link to="/register" class="auth-link">立即注册</router-link>
       </div>
-    </div>
+    </n-card>
   </div>
 </template>
 
@@ -54,23 +53,62 @@ import { ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useGroupStore } from '@/stores/group'
+import { 
+  NCard, 
+  NForm, 
+  NFormItem, 
+  NInput, 
+  NButton, 
+  NText,
+  useMessage,
+  type FormInst,
+  type FormRules
+} from 'naive-ui'
 
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
 const groupStore = useGroupStore()
+const message = useMessage()
 
+const formRef = ref<FormInst | null>(null)
 const formData = ref({
   email: '',
   password: ''
 })
 
+const rules: FormRules = {
+  email: [
+    {
+      required: true,
+      message: '请输入邮箱',
+      trigger: ['blur', 'input']
+    },
+    {
+      type: 'email',
+      message: '请输入有效的邮箱地址',
+      trigger: ['blur', 'input']
+    }
+  ],
+  password: [
+    {
+      required: true,
+      message: '请输入密码',
+      trigger: ['blur', 'input']
+    }
+  ]
+}
+
 const loading = ref(false)
-const error = ref('')
 
 const handleSubmit = async () => {
+  try {
+    await formRef.value?.validate()
+  } catch {
+    return
+  }
+
   loading.value = true
-  error.value = ''
 
   try {
     await authStore.login(formData.value)
@@ -78,13 +116,15 @@ const handleSubmit = async () => {
     // 登录成功后初始化群组
     await groupStore.initialize()
     
+    message.success('登录成功')
+    
     // 跳转到目标页面，优先级：query.redirect > 保存的路由 > 群组列表
     const redirect = route.query.redirect as string
     const savedRoute = localStorage.getItem('last_route')
     const targetRoute = redirect || (savedRoute && savedRoute !== '/login' && savedRoute !== '/register' ? savedRoute : '/groups')
     router.push(targetRoute)
   } catch (err: any) {
-    error.value = err.message || '登录失败，请检查邮箱和密码'
+    message.error(err.message || '登录失败，请检查邮箱和密码')
   } finally {
     loading.value = false
   }
@@ -97,16 +137,14 @@ const handleSubmit = async () => {
   justify-content: center;
   align-items: center;
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background-color: #f5f7fa;
+  padding: 20px;
 }
 
-.auth-container {
+.auth-card {
   width: 100%;
   max-width: 400px;
-  padding: 40px;
-  background-color: white;
-  border-radius: 8px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
 .auth-title {
@@ -117,77 +155,14 @@ const handleSubmit = async () => {
   color: #333;
 }
 
-.auth-form {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.form-group label {
-  font-size: 14px;
-  font-weight: 500;
-  color: #555;
-}
-
-.form-input {
-  padding: 12px;
-  font-size: 14px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  outline: none;
-  transition: border-color 0.2s;
-}
-
-.form-input:focus {
-  border-color: #667eea;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-}
-
-.error-message {
-  padding: 12px;
-  font-size: 14px;
-  color: #d32f2f;
-  background-color: #ffebee;
-  border-radius: 4px;
-  text-align: center;
-}
-
-.btn-submit {
-  padding: 12px;
-  font-size: 16px;
-  font-weight: 500;
-  color: white;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: opacity 0.2s;
-}
-
-.btn-submit:hover:not(:disabled) {
-  opacity: 0.9;
-}
-
-.btn-submit:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
 .auth-footer {
   margin-top: 24px;
   text-align: center;
   font-size: 14px;
-  color: #666;
 }
 
 .auth-link {
-  color: #667eea;
+  color: #2080f0;
   text-decoration: none;
   margin-left: 4px;
   font-weight: 500;
@@ -197,4 +172,3 @@ const handleSubmit = async () => {
   text-decoration: underline;
 }
 </style>
-

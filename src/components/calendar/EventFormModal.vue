@@ -1,96 +1,118 @@
 <template>
-  <div v-if="modelValue" class="modal-overlay" @click="handleClose">
-    <div class="modal-content" @click.stop>
-      <h3 class="modal-title">{{ event ? '编辑事件' : '创建事件' }}</h3>
+  <n-modal
+    v-model:show="showModal"
+    preset="card"
+    :title="event ? '编辑事件' : '创建事件'"
+    style="width: 600px;"
+    :segmented="{
+      content: 'soft',
+      footer: 'soft'
+    }"
+    @after-leave="handleAfterLeave"
+  >
+    <n-form
+      ref="formRef"
+      :model="formData"
+      :rules="rules"
+      label-placement="top"
+      label-width="auto"
+    >
+      <n-form-item path="title" label="标题">
+        <n-input
+          v-model:value="formData.title"
+          placeholder="请输入事件标题"
+        />
+      </n-form-item>
 
-      <form @submit.prevent="handleSubmit" class="form">
-        <div class="form-group">
-          <label for="title">标题</label>
-          <input
-            id="title"
-            v-model="formData.title"
-            type="text"
-            required
-            placeholder="请输入事件标题"
-            class="form-input"
-          />
-        </div>
+      <n-form-item path="description" label="描述">
+        <n-input
+          v-model:value="formData.description"
+          type="textarea"
+          :rows="3"
+          placeholder="请输入事件描述"
+        />
+      </n-form-item>
 
-        <div class="form-group">
-          <label for="description">描述</label>
-          <textarea
-            id="description"
-            v-model="formData.description"
-            rows="3"
-            placeholder="请输入事件描述"
-            class="form-input"
-          ></textarea>
-        </div>
-
-        <div class="form-group">
-          <label for="start_time">开始时间</label>
-          <input
-            id="start_time"
-            v-model="formData.start_time"
-            type="datetime-local"
-            required
-            class="form-input"
-          />
-        </div>
-
-        <div class="form-group">
-          <label for="end_time">结束时间</label>
-          <input
-            id="end_time"
-            v-model="formData.end_time"
-            type="datetime-local"
-            required
-            class="form-input"
-          />
-        </div>
-
-        <div class="form-group">
-          <label for="location">地点</label>
-          <input
-            id="location"
-            v-model="formData.location"
-            type="text"
-            placeholder="请输入事件地点"
-            class="form-input"
-          />
-        </div>
-
-        <div class="form-group checkbox">
-          <label>
-            <input
-              v-model="formData.all_day"
-              type="checkbox"
+      <n-grid :cols="2" :x-gap="16">
+        <n-grid-item>
+          <n-form-item path="start_time" label="开始时间">
+            <n-date-picker
+              v-model:formatted-value="formData.start_time"
+              type="datetime"
+              format="yyyy-MM-dd HH:mm"
+              value-format="yyyy-MM-dd'T'HH:mm"
+              style="width: 100%;"
             />
-            全天事件
-          </label>
-        </div>
+          </n-form-item>
+        </n-grid-item>
+        
+        <n-grid-item>
+          <n-form-item path="end_time" label="结束时间">
+            <n-date-picker
+              v-model:formatted-value="formData.end_time"
+              type="datetime"
+              format="yyyy-MM-dd HH:mm"
+              value-format="yyyy-MM-dd'T'HH:mm"
+              style="width: 100%;"
+            />
+          </n-form-item>
+        </n-grid-item>
+      </n-grid>
 
-        <div class="form-group">
-          <label>标签</label>
-          <LabelInput :model-value="formData.label_ids || []" @update:model-value="formData.label_ids = $event" />
-        </div>
+      <n-form-item path="location" label="地点">
+        <n-input
+          v-model:value="formData.location"
+          placeholder="请输入事件地点"
+        />
+      </n-form-item>
 
-        <div class="form-actions">
-          <button type="button" @click="handleClose" class="btn-secondary">
-            取消
-          </button>
-          <button type="submit" :disabled="submitting" class="btn-primary">
-            {{ submitting ? '保存中...' : '保存' }}
-          </button>
-        </div>
-      </form>
-    </div>
-  </div>
+      <n-form-item path="all_day" label="全天事件">
+        <n-switch v-model:value="formData.all_day" />
+      </n-form-item>
+
+      <n-form-item label="标签">
+        <LabelInput 
+          :model-value="formData.label_ids || []" 
+          @update:model-value="formData.label_ids = $event" 
+        />
+      </n-form-item>
+    </n-form>
+
+    <template #footer>
+      <n-space justify="end">
+        <n-button @click="handleClose">
+          取消
+        </n-button>
+        <n-button 
+          type="primary" 
+          :loading="submitting"
+          :disabled="submitting"
+          @click="handleSubmit"
+        >
+          {{ submitting ? '保存中...' : '保存' }}
+        </n-button>
+      </n-space>
+    </template>
+  </n-modal>
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, watch, computed } from 'vue'
 import type { Event, EventCreate } from '@/types'
+import { 
+  NModal, 
+  NForm, 
+  NFormItem, 
+  NInput, 
+  NDatePicker, 
+  NSwitch, 
+  NButton,
+  NSpace,
+  NGrid,
+  NGridItem,
+  type FormInst,
+  type FormRules
+} from 'naive-ui'
 import LabelInput from '@/components/common/LabelInput.vue'
 
 interface Props {
@@ -113,6 +135,12 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<Emits>()
 
+const showModal = computed({
+  get: () => props.modelValue,
+  set: (value) => emit('update:modelValue', value)
+})
+
+const formRef = ref<FormInst | null>(null)
 const submitting = ref(false)
 const formData = ref<EventCreate & { id?: number }>({
   title: '',
@@ -123,6 +151,30 @@ const formData = ref<EventCreate & { id?: number }>({
   all_day: false,
   label_ids: []
 })
+
+const rules: FormRules = {
+  title: [
+    {
+      required: true,
+      message: '请输入事件标题',
+      trigger: ['blur', 'input']
+    }
+  ],
+  start_time: [
+    {
+      required: true,
+      message: '请选择开始时间',
+      trigger: ['blur', 'change']
+    }
+  ],
+  end_time: [
+    {
+      required: true,
+      message: '请选择结束时间',
+      trigger: ['blur', 'change']
+    }
+  ]
+}
 
 // 监听 props 变化，初始化表单数据
 watch(
@@ -169,7 +221,18 @@ const handleClose = () => {
   emit('update:modelValue', false)
 }
 
-const handleSubmit = () => {
+const handleAfterLeave = () => {
+  submitting.value = false
+  formRef.value?.restoreValidation()
+}
+
+const handleSubmit = async () => {
+  try {
+    await formRef.value?.validate()
+  } catch {
+    return
+  }
+
   submitting.value = true
   emit('submit', formData.value)
 }
@@ -194,128 +257,3 @@ const formatDateTimeForInput = (dateString: string) => {
   return `${year}-${month}-${day}T${hours}:${minutes}`
 }
 </script>
-
-<style scoped>
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000;
-}
-
-.modal-content {
-  width: 90%;
-  max-width: 600px;
-  max-height: 90vh;
-  overflow-y: auto;
-  padding: 24px;
-  background-color: white;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-}
-
-.modal-title {
-  margin: 0 0 20px;
-  font-size: 20px;
-  font-weight: 600;
-  color: #333;
-}
-
-.form {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.form-group.checkbox {
-  flex-direction: row;
-  align-items: center;
-}
-
-.form-group.checkbox label {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-}
-
-.form-group label {
-  font-size: 14px;
-  font-weight: 500;
-  color: #555;
-}
-
-.form-input {
-  padding: 10px;
-  font-size: 14px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  outline: none;
-  transition: border-color 0.2s;
-}
-
-.form-input:focus {
-  border-color: #4CAF50;
-  box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.1);
-}
-
-textarea.form-input {
-  resize: vertical;
-  font-family: inherit;
-}
-
-.form-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  margin-top: 8px;
-}
-
-.btn-primary,
-.btn-secondary {
-  padding: 10px 20px;
-  font-size: 14px;
-  font-weight: 500;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.btn-primary {
-  color: white;
-  background-color: #4CAF50;
-}
-
-.btn-primary:hover:not(:disabled) {
-  background-color: #45a049;
-}
-
-.btn-primary:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.btn-secondary {
-  color: #333;
-  background-color: #f5f5f5;
-  border: 1px solid #ddd;
-}
-
-.btn-secondary:hover {
-  background-color: #e8e8e8;
-}
-</style>
-

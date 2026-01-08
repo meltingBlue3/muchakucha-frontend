@@ -1,22 +1,20 @@
 <template>
   <div class="group-selector">
-    <label for="group-select">当前群组：</label>
-    <select 
-      id="group-select" 
-      v-model="selectedGroupId" 
-      @change="handleGroupChange"
-      class="group-select"
-    >
-      <option v-for="group in groupStore.groups" :key="group.id" :value="group.id">
-        {{ group.name }}
-      </option>
-    </select>
+    <n-text class="selector-label">当前群组：</n-text>
+    <n-select
+      v-model:value="selectedGroupId"
+      :options="groupOptions"
+      @update:value="handleGroupChange"
+      style="min-width: 180px;"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, watch, computed } from 'vue'
 import { useGroupStore } from '@/stores/group'
+import { NSelect, NText } from 'naive-ui'
+import type { SelectOption } from 'naive-ui'
 
 const groupStore = useGroupStore()
 const selectedGroupId = ref(groupStore.currentGroupId)
@@ -26,8 +24,16 @@ watch(() => groupStore.currentGroupId, (newId) => {
   selectedGroupId.value = newId
 })
 
-const handleGroupChange = () => {
-  const group = groupStore.groups.find(g => g.id === selectedGroupId.value)
+// 转换为 NSelect 的选项格式
+const groupOptions = computed<SelectOption[]>(() => {
+  return groupStore.groups.map(group => ({
+    label: group.name,
+    value: group.id
+  }))
+})
+
+const handleGroupChange = (value: number) => {
+  const group = groupStore.groups.find(g => g.id === value)
   if (group) {
     groupStore.setCurrentGroup(group)
   }
@@ -41,29 +47,8 @@ const handleGroupChange = () => {
   gap: 8px;
 }
 
-label {
+.selector-label {
   font-size: 14px;
-  color: #333;
-}
-
-.group-select {
-  padding: 6px 12px;
-  font-size: 14px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  background-color: white;
-  cursor: pointer;
-  outline: none;
-  transition: border-color 0.2s;
-}
-
-.group-select:hover {
-  border-color: #4CAF50;
-}
-
-.group-select:focus {
-  border-color: #4CAF50;
-  box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.1);
+  white-space: nowrap;
 }
 </style>
-

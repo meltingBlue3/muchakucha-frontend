@@ -1,46 +1,50 @@
 <template>
   <AppLayout>
     <div class="calendar-view">
-      <div class="page-header">
-        <h2 class="page-title">日历事件</h2>
-        <div class="header-actions">
+      <n-space justify="space-between" align="center" style="margin-bottom: 24px;">
+        <n-text tag="h2" style="font-size: 24px; font-weight: 600; margin: 0;">
+          日历事件
+        </n-text>
+        
+        <n-space align="center">
           <!-- 标签筛选 -->
           <LabelFilter v-model="filterLabelIds" @update:modelValue="loadEvents" />
           
-          <!-- 视图切换按钮 -->
-          <div class="view-toggle">
-            <button
-              :class="['toggle-btn', { active: viewMode === 'calendar' }]"
+          <!-- 视图切换 -->
+          <n-button-group>
+            <n-button
+              :type="viewMode === 'calendar' ? 'primary' : 'default'"
               @click="viewMode = 'calendar'"
             >
               日历视图
-            </button>
-            <button
-              :class="['toggle-btn', { active: viewMode === 'list' }]"
+            </n-button>
+            <n-button
+              :type="viewMode === 'list' ? 'primary' : 'default'"
               @click="viewMode = 'list'"
             >
               列表视图
-            </button>
-          </div>
-          <button @click="handleShowCreateForm" class="btn-primary">
+            </n-button>
+          </n-button-group>
+          
+          <n-button type="primary" @click="handleShowCreateForm">
             创建事件
-          </button>
-        </div>
-      </div>
+          </n-button>
+        </n-space>
+      </n-space>
 
       <!-- FullCalendar 日历视图 -->
-      <div v-if="viewMode === 'calendar'" class="calendar-container">
+      <n-card v-if="viewMode === 'calendar'" :bordered="false">
         <FullCalendar :options="calendarOptions" />
-      </div>
+      </n-card>
 
       <!-- 列表视图 -->
-      <div v-else class="list-container">
+      <n-card v-else :bordered="false">
         <EventListView
           :events="events"
           @edit="handleEditEvent"
           @delete="handleDeleteEvent"
         />
-      </div>
+      </n-card>
 
       <!-- 事件表单弹窗 -->
       <EventFormModal
@@ -50,11 +54,6 @@
         :initial-end-date="initialEndDate"
         @submit="handleSubmitEvent"
       />
-
-      <!-- 错误提示 -->
-      <div v-if="error" class="error-toast">
-        {{ error }}
-      </div>
     </div>
   </AppLayout>
 </template>
@@ -70,6 +69,15 @@ import EventListView from '@/components/calendar/EventListView.vue'
 import LabelFilter from '@/components/common/LabelFilter.vue'
 import { getUserColor } from '@/utils/colors'
 import { formatLocalTimeToISO } from '@/utils/datetime'
+import { 
+  NCard, 
+  NSpace, 
+  NText, 
+  NButton, 
+  NButtonGroup,
+  useMessage,
+  useDialog
+} from 'naive-ui'
 
 // FullCalendar imports
 import FullCalendar from '@fullcalendar/vue3'
@@ -80,13 +88,14 @@ import type { CalendarOptions, EventInput, DateSelectArg, EventClickArg, EventDr
 import type { EventResizeDoneArg } from '@fullcalendar/interaction'
 
 const groupStore = useGroupStore()
+const message = useMessage()
+const dialog = useDialog()
 
 const events = ref<Event[]>([])
 const showEventForm = ref(false)
 const editingEvent = ref<Event | null>(null)
 const initialDate = ref<Date | null>(null)
 const initialEndDate = ref<Date | null>(null)
-const error = ref('')
 const viewMode = ref<'calendar' | 'list'>('calendar')
 const filterLabelIds = ref<number[]>([])
 
@@ -180,8 +189,7 @@ const loadEvents = async () => {
       filterLabelIds.value.length > 0 ? filterLabelIds.value : undefined
     )
   } catch (err: any) {
-    error.value = err.message || '加载事件列表失败'
-    setTimeout(() => error.value = '', 3000)
+    message.error(err.message || '加载事件列表失败')
   }
 }
 
@@ -239,9 +247,9 @@ const handleEventDrop = async (dropInfo: EventDropArg) => {
       end_time: newEnd ? formatLocalTimeToISO(newEnd) : undefined
     })
     await loadEvents()
+    message.success('事件已更新')
   } catch (err: any) {
-    error.value = err.message || '更新事件失败'
-    setTimeout(() => error.value = '', 3000)
+    message.error(err.message || '更新事件失败')
     dropInfo.revert()
   }
 }
@@ -263,9 +271,9 @@ const handleEventResize = async (resizeInfo: EventResizeDoneArg) => {
       end_time: formatLocalTimeToISO(newEnd)
     })
     await loadEvents()
+    message.success('事件已更新')
   } catch (err: any) {
-    error.value = err.message || '更新事件失败'
-    setTimeout(() => error.value = '', 3000)
+    message.error(err.message || '更新事件失败')
     resizeInfo.revert()
   }
 }
@@ -296,16 +304,17 @@ const handleSubmitEvent = async (formData: EventCreate & { id?: number }) => {
     if (formData.id) {
       // 编辑事件
       await eventApi.updateEvent(groupStore.currentGroupId, formData.id, data)
+      message.success('事件已更新')
     } else {
       // 创建事件
       await eventApi.createEvent(groupStore.currentGroupId, data)
+      message.success('事件已创建')
     }
 
     await loadEvents()
     showEventForm.value = false
   } catch (err: any) {
-    error.value = err.message || '保存事件失败'
-    setTimeout(() => error.value = '', 3000)
+    message.error(err.message || '保存事件失败')
   }
 }
 
@@ -320,15 +329,22 @@ const handleEditEvent = (event: Event) => {
 // 删除事件（从列表视图调用）
 const handleDeleteEvent = async (eventId: number) => {
   if (!groupStore.currentGroupId) return
-  if (!confirm('确定要删除这个事件吗？')) return
 
-  try {
-    await eventApi.deleteEvent(groupStore.currentGroupId, eventId)
-    await loadEvents()
-  } catch (err: any) {
-    error.value = err.message || '删除事件失败'
-    setTimeout(() => error.value = '', 3000)
-  }
+  dialog.warning({
+    title: '确认删除',
+    content: '确定要删除这个事件吗？',
+    positiveText: '删除',
+    negativeText: '取消',
+    onPositiveClick: async () => {
+      try {
+        await eventApi.deleteEvent(groupStore.currentGroupId!, eventId)
+        await loadEvents()
+        message.success('事件已删除')
+      } catch (err: any) {
+        message.error(err.message || '删除事件失败')
+      }
+    }
+  })
 }
 </script>
 
@@ -336,177 +352,5 @@ const handleDeleteEvent = async (eventId: number) => {
 .calendar-view {
   max-width: 1400px;
   margin: 0 auto;
-  padding: 0 16px;
-}
-
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 24px;
-}
-
-.page-title {
-  margin: 0;
-  font-size: 24px;
-  font-weight: 600;
-  color: #333;
-}
-
-.header-actions {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.view-toggle {
-  display: flex;
-  background-color: #f5f5f5;
-  border-radius: 4px;
-  padding: 2px;
-}
-
-.toggle-btn {
-  padding: 8px 16px;
-  font-size: 14px;
-  font-weight: 500;
-  color: #666;
-  background-color: transparent;
-  border: none;
-  border-radius: 3px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.toggle-btn:hover {
-  color: #333;
-}
-
-.toggle-btn.active {
-  color: white;
-  background-color: #4CAF50;
-}
-
-.btn-primary {
-  padding: 10px 20px;
-  font-size: 14px;
-  font-weight: 500;
-  color: white;
-  background-color: #4CAF50;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.btn-primary:hover {
-  background-color: #45a049;
-}
-
-.calendar-container,
-.list-container {
-  background-color: white;
-  border-radius: 8px;
-  padding: 20px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-/* FullCalendar 样式自定义 */
-:deep(.fc) {
-  font-family: inherit;
-}
-
-:deep(.fc .fc-button) {
-  background-color: #4CAF50;
-  border-color: #4CAF50;
-  color: white;
-  text-transform: none;
-  font-weight: 500;
-  padding: 6px 12px;
-  font-size: 14px;
-}
-
-:deep(.fc .fc-button:hover) {
-  background-color: #45a049;
-  border-color: #45a049;
-}
-
-:deep(.fc .fc-button:disabled) {
-  background-color: #ccc;
-  border-color: #ccc;
-}
-
-:deep(.fc .fc-button-active) {
-  background-color: #388E3C;
-  border-color: #388E3C;
-}
-
-:deep(.fc-toolbar-title) {
-  font-size: 20px;
-  font-weight: 600;
-  color: #333;
-}
-
-:deep(.fc-daygrid-day-number),
-:deep(.fc-col-header-cell-cushion) {
-  color: #333;
-  text-decoration: none;
-}
-
-:deep(.fc-daygrid-day-number:hover) {
-  color: #4CAF50;
-}
-
-:deep(.fc-day-today) {
-  background-color: rgba(76, 175, 80, 0.1) !important;
-}
-
-:deep(.fc-event) {
-  cursor: pointer;
-  border-radius: 4px;
-  padding: 2px 4px;
-}
-
-:deep(.fc-event:hover) {
-  opacity: 0.9;
-}
-
-:deep(.fc-event-title) {
-  font-weight: 500;
-}
-
-/* 响应式设计 */
-@media (max-width: 768px) {
-  .calendar-container {
-    padding: 10px;
-  }
-  
-  :deep(.fc-toolbar) {
-    flex-direction: column;
-    gap: 10px;
-  }
-  
-  :deep(.fc-toolbar-chunk) {
-    display: flex;
-    justify-content: center;
-  }
-  
-  :deep(.fc .fc-button) {
-    padding: 4px 8px;
-    font-size: 12px;
-  }
-}
-
-.error-toast {
-  position: fixed;
-  bottom: 24px;
-  right: 24px;
-  padding: 12px 24px;
-  background-color: #f44336;
-  color: white;
-  border-radius: 4px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-  z-index: 1001;
 }
 </style>
-
