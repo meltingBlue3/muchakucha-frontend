@@ -199,7 +199,7 @@ const columns: DataTableColumns<Event> = [
         default: () => [
           h(NButton, {
             size: 'small',
-            onClick: (e: Event) => {
+            onClick: (e: MouseEvent) => {
               e.stopPropagation()
               emit('edit', row)
             }
@@ -208,7 +208,7 @@ const columns: DataTableColumns<Event> = [
             size: 'small',
             type: 'error',
             secondary: true,
-            onClick: (e: Event) => {
+            onClick: (e: MouseEvent) => {
               e.stopPropagation()
               emit('delete', row.id)
             }

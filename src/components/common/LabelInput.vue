@@ -43,6 +43,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted, nextTick, h } from 'vue'
+import type { VNodeChild } from 'vue'
 import { useGroupStore } from '@/stores/group'
 import * as labelApi from '@/api/labels'
 import type { Label, LabelBasic } from '@/types'
@@ -79,6 +80,8 @@ const showDropdown = ref(false)
 const allLabels = ref<Label[]>([])
 const searchQuery = ref('')
 const dropdownPosition = ref<{ top: number; left: number } | null>(null)
+// 存储 key 到 label 的映射
+const labelMap = ref<Map<string, Label>>(new Map())
 
 // 已选择的标签
 const selectedLabels = computed<LabelBasic[]>(() => {
@@ -112,21 +115,22 @@ const exactMatch = computed(() => {
 
 // 下拉选项
 const dropdownOptions = computed<DropdownOption[]>(() => {
-  const options: DropdownOption[] = filteredLabels.value.map(label => ({
-    label: label.name,
-    key: `label-${label.id}`,
-    props: {
-      labelData: label
+  // 清空并重建映射
+  labelMap.value.clear()
+  
+  const options: DropdownOption[] = filteredLabels.value.map(label => {
+    const key = `label-${label.id}`
+    labelMap.value.set(key, label)
+    return {
+      label: label.name,
+      key
     }
-  }))
+  })
 
   if (searchQuery.value && !exactMatch.value) {
     options.push({
       label: `创建标签 "${searchQuery.value}"`,
-      key: 'create-new',
-      props: {
-        isCreate: true
-      }
+      key: 'create-new'
     })
   }
 
@@ -142,12 +146,12 @@ const dropdownOptions = computed<DropdownOption[]>(() => {
 })
 
 // 渲染下拉选项标签
-const renderDropdownLabel = (option: DropdownOption) => {
-  if (option.props?.isCreate) {
+const renderDropdownLabel = (option: DropdownOption): VNodeChild => {
+  if (option.key === 'create-new') {
     return h('span', { style: 'color: #2080f0; font-weight: 500;' }, option.label as string)
   }
-  if (option.props?.labelData) {
-    const label = option.props.labelData as Label
+  const label = labelMap.value.get(option.key as string)
+  if (label) {
     return h('div', { style: 'display: flex; align-items: center; gap: 8px;' }, [
       h('span', { 
         style: `width: 12px; height: 12px; border-radius: 50%; background-color: ${label.color};` 
@@ -155,7 +159,7 @@ const renderDropdownLabel = (option: DropdownOption) => {
       h('span', label.name)
     ])
   }
-  return option.label
+  return option.label as VNodeChild
 }
 
 // 加载标签列表
@@ -204,11 +208,14 @@ const handleBlur = () => {
 }
 
 // 从下拉框选择
-const handleSelectFromDropdown = (key: string, option: DropdownOption) => {
+const handleSelectFromDropdown = (key: string) => {
   if (key === 'create-new') {
     handleCreateLabel()
-  } else if (option.props?.labelData) {
-    handleSelectLabel(option.props.labelData as Label)
+  } else {
+    const label = labelMap.value.get(key)
+    if (label) {
+      handleSelectLabel(label)
+    }
   }
 }
 

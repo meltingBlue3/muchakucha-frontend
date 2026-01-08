@@ -310,6 +310,6 @@ const formatDate = (dateString: string) => {
 }
 
 .active-group :deep(.n-card) {
-  border-color: #18a058;
+  border-color: #2080f0;
 }
 </style>
