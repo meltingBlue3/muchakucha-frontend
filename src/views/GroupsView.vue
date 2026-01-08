@@ -213,13 +213,14 @@ const handleAddMember = async () => {
 
   try {
     await groupApi.addMember(selectedGroup.value.id, {
-      email: addMemberEmail.value,
+      email: addMemberEmail.value.trim(),
       role: 'member'
     })
     addMemberEmail.value = ''
     // 重新加载成员列表
     members.value = await groupApi.getGroupMembers(selectedGroup.value.id)
   } catch (err: any) {
+    // 错误消息已经在 API 客户端中格式化过了
     error.value = err.message || '添加成员失败'
     setTimeout(() => error.value = '', 3000)
   } finally {

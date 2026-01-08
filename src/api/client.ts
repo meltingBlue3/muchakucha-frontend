@@ -41,9 +41,45 @@ client.interceptors.response.use(
     }
 
     // 格式化错误信息
+    let message = error.message || '请求失败'
+    const responseData = error.response?.data as any
+
+    // 处理验证错误（422）
+    if (error.response?.status === 422 && responseData?.detail) {
+      const details = Array.isArray(responseData.detail) ? responseData.detail : [responseData.detail]
+      const errorMessages = details.map((err: any) => {
+        // 提取字段名（通常是 loc 数组的最后一个元素）
+        const field = Array.isArray(err.loc) ? err.loc[err.loc.length - 1] : '字段'
+        // 提取错误消息
+        let msg = err.msg || ''
+        
+        // 将英文错误消息转换为中文
+        if (msg.includes('not a valid email address')) {
+          if (msg.includes('The part after the @-sign is not valid')) {
+            msg = '邮箱格式不正确：@ 符号后的部分无效，应包含域名'
+          } else {
+            msg = '邮箱格式不正确'
+          }
+        } else if (msg.includes('required')) {
+          msg = `${field} 是必填项`
+        } else if (msg.includes('value_error')) {
+          msg = msg.replace(/value is not a valid email address: /, '邮箱格式不正确：')
+        }
+        
+        // 如果字段是 body，不显示字段名
+        return field === 'body' ? msg : `${field}: ${msg}`
+      })
+      message = errorMessages.join('; ')
+    } else if (responseData?.detail) {
+      // 其他类型的错误
+      message = typeof responseData.detail === 'string' 
+        ? responseData.detail 
+        : responseData.detail?.message || message
+    }
+
     const apiError: ApiError = {
-      message: error.response?.data?.detail || error.message || '请求失败',
-      detail: error.response?.data
+      message,
+      detail: responseData
     }
 
     return Promise.reject(apiError)
