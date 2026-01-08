@@ -72,7 +72,7 @@
 
         <div class="form-group">
           <label>标签</label>
-          <LabelInput v-model="formData.label_ids" />
+          <LabelInput :model-value="formData.label_ids || []" @update:model-value="formData.label_ids = $event" />
         </div>
 
         <div class="form-actions">

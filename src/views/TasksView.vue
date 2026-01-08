@@ -165,7 +165,7 @@
 
             <div class="form-group">
               <label>标签</label>
-              <LabelInput v-model="taskFormData.label_ids" />
+              <LabelInput :model-value="taskFormData.label_ids || []" @update:model-value="taskFormData.label_ids = $event" />
             </div>
 
             <div class="form-actions">

@@ -76,7 +76,8 @@ import FullCalendar from '@fullcalendar/vue3'
 import dayGridPlugin from '@fullcalendar/daygrid'
 import timeGridPlugin from '@fullcalendar/timegrid'
 import interactionPlugin from '@fullcalendar/interaction'
-import type { CalendarOptions, EventInput, DateSelectArg, EventClickArg, EventDropArg, EventResizeDoneArg } from '@fullcalendar/core'
+import type { CalendarOptions, EventInput, DateSelectArg, EventClickArg, EventDropArg } from '@fullcalendar/core'
+import type { EventResizeDoneArg } from '@fullcalendar/interaction'
 
 const groupStore = useGroupStore()
 
