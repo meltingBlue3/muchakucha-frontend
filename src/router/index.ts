@@ -41,7 +41,14 @@ const routes: RouteRecordRaw[] = [
   },
   {
     path: '/',
-    redirect: '/groups'
+    redirect: () => {
+      // 尝试恢复之前保存的路由
+      const savedRoute = localStorage.getItem('last_route')
+      if (savedRoute && savedRoute !== '/login' && savedRoute !== '/register') {
+        return savedRoute
+      }
+      return '/groups'
+    }
   },
   {
     path: '/:pathMatch(.*)*',
@@ -79,21 +86,47 @@ router.beforeEach(async (to, from, next) => {
   }
 
   if (!requiresAuth && authStore.isAuthenticated) {
-    // 已登录用户访问登录/注册页，跳转到首页
+    // 已登录用户访问登录/注册页，尝试恢复之前的路由
     if (to.name === 'Login' || to.name === 'Register') {
-      next({ name: 'Groups' })
+      const savedRoute = localStorage.getItem('last_route')
+      if (savedRoute && savedRoute !== '/login' && savedRoute !== '/register') {
+        next(savedRoute)
+      } else {
+        next({ name: 'Groups' })
+      }
       return
     }
   }
 
   // 检查是否需要选择群组
   if (to.meta.requiresGroup && !groupStore.currentGroupId) {
-    // 需要群组但未选择，跳转到群组列表页
-    next({ name: 'Groups' })
-    return
+    // 如果群组列表为空，先尝试获取群组
+    if (groupStore.groups.length === 0) {
+      try {
+        await groupStore.initialize()
+      } catch (error) {
+        // 获取群组失败，跳转到群组列表页
+        next({ name: 'Groups' })
+        return
+      }
+    }
+    
+    // 如果仍然没有当前群组，跳转到群组列表页
+    if (!groupStore.currentGroupId) {
+      next({ name: 'Groups' })
+      return
+    }
   }
 
   next()
+})
+
+// 全局后置守卫：保存当前路由
+router.afterEach((to) => {
+  // 保存当前路由（排除登录和注册页）
+  if (to.name !== 'Login' && to.name !== 'Register') {
+    localStorage.setItem('last_route', to.fullPath)
+  }
 })
 
 export default router

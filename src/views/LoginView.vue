@@ -78,9 +78,11 @@ const handleSubmit = async () => {
     // 登录成功后初始化群组
     await groupStore.initialize()
     
-    // 跳转到目标页面或群组列表
+    // 跳转到目标页面，优先级：query.redirect > 保存的路由 > 群组列表
     const redirect = route.query.redirect as string
-    router.push(redirect || '/groups')
+    const savedRoute = localStorage.getItem('last_route')
+    const targetRoute = redirect || (savedRoute && savedRoute !== '/login' && savedRoute !== '/register' ? savedRoute : '/groups')
+    router.push(targetRoute)
   } catch (err: any) {
     error.value = err.message || '登录失败，请检查邮箱和密码'
   } finally {
